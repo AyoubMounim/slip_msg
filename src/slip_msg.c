@@ -114,3 +114,11 @@ enum slip_err slip_msg_write(struct slip_msg const *self, uint8_t const *buffer,
 exit:
   return err;
 }
+
+enum slip_err slip_msg_deinit(struct slip_msg *self) {
+  enum slip_err err = SLIP_ERR_OK;
+  if (self->intrf->deinit(self->ctx) < 0) {
+    err = SLIP_ERR_DEINIT_FAIL;
+  }
+  return err;
+}

@@ -1,39 +1,60 @@
 
+#include "slip_fd_intrf.c"
 #include "slip_msg.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-int32_t write_file(void *ctx, uint8_t const *buffer, uint16_t size) {
-  int fd = (intptr_t)ctx;
-  return write(fd, buffer, size);
-}
-
-int32_t read_file(void *ctx, uint8_t *buffer, uint16_t size) {
-  int fd = (intptr_t)ctx;
-  return read(fd, buffer, size);
-}
-
-struct slip_msg_intrf file_intrf = {
-    .write = write_file,
-    .read = read_file,
+struct prog_args {
+  char const *file_path;
+  char const *data_string;
 };
 
-int main(int argc, char *argv[]) {
-  int fd = open("dump.txt", O_WRONLY);
-  assert(fd >= 0);
-  struct slip_msg slip_msg = {.intrf = &file_intrf,
-                              .ctx = (void *)(intptr_t)fd};
+static int prog_args_parse(struct prog_args *args, int argc, char *argv[]) {
+  if (argc == 2) {
+    if (strcmp("--help", argv[1]) == 0) {
+      return 1;
+    }
+    return -1;
+  }
+  if (argc != 3) {
+    return -1;
+  }
+  args->file_path = argv[1];
+  args->data_string = argv[2];
+  return 0;
+}
 
-  uint8_t data[] = "Hello\xc0 There!\n";
-  enum slip_err err = slip_msg_write(&slip_msg, data, sizeof(data));
+static void print_usage(char const *prog_name) {
+  printf("Usage: %s <file_path> <data_string>\n", prog_name);
+  return;
+}
+
+int main(int argc, char *argv[]) {
+  struct prog_args args = {0};
+  int parse_err = prog_args_parse(&args, argc, argv);
+  if (parse_err < 0 || parse_err == 1) {
+    print_usage(argv[0]);
+    exit(1);
+  }
+  int fd = open(args.file_path, O_WRONLY | O_CREAT | O_TRUNC);
+  assert(fd >= 0);
+  struct slip_msg slip_msg = {
+      .intrf = &fd_intrf,
+      .ctx = (void *)(intptr_t)fd,
+  };
+
+  enum slip_err err = slip_msg_write(&slip_msg, (uint8_t *)args.data_string,
+                                     strlen(args.data_string));
 
   if (err != SLIP_ERR_OK) {
     fprintf(stderr, "error: %d\n", err);
   }
 
-  close(fd);
+  slip_msg_deinit(&slip_msg);
 
   return 0;
 }

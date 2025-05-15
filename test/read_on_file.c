@@ -1,31 +1,46 @@
 
+#include "slip_fd_intrf.c"
 #include "slip_msg.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-int32_t write_file(void *ctx, uint8_t const *buffer, uint16_t size) {
-  int fd = (intptr_t)ctx;
-  return write(fd, buffer, size);
-}
-
-int32_t read_file(void *ctx, uint8_t *buffer, uint16_t size) {
-  int fd = (intptr_t)ctx;
-  return read(fd, buffer, size);
-}
-
-struct slip_msg_intrf file_intrf = {
-    .write = write_file,
-    .read = read_file,
+struct prog_args {
+  char const *file_path;
 };
 
+static int prog_args_parse(struct prog_args *args, int argc, char *argv[]) {
+  if (argc != 2) {
+    return -1;
+  }
+  if (strcmp("--help", argv[1]) == 0) {
+    return 1;
+  }
+  args->file_path = argv[1];
+  return 0;
+}
+
+static void print_usage(char const *prog_name) {
+  printf("Usage: %s <file_path>\n", prog_name);
+  return;
+}
+
 int main(int argc, char *argv[]) {
-  int fd = open("dump.txt", O_RDONLY);
+  struct prog_args args = {0};
+  int parse_err = prog_args_parse(&args, argc, argv);
+  if (parse_err < 0 || parse_err == 1) {
+    print_usage(argv[0]);
+    exit(1);
+  }
+  int fd = open(args.file_path, O_RDONLY);
   assert(fd >= 0);
-  struct slip_msg slip_msg = {.intrf = &file_intrf,
-                              .ctx = (void *)(intptr_t)fd};
+  struct slip_msg slip_msg = {
+      .intrf = &fd_intrf,
+      .ctx = (void *)(intptr_t)fd,
+  };
 
   struct slip_frame frame = {0};
   enum slip_err err = slip_msg_read(&slip_msg, &frame);
@@ -39,7 +54,7 @@ int main(int argc, char *argv[]) {
   str[frame.size] = '\0';
   printf("data: %s\n", str);
 
-  close(fd);
+  slip_msg_deinit(&slip_msg);
 
   return 0;
 }

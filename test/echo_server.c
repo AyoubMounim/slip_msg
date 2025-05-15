@@ -1,4 +1,5 @@
 
+#include "slip_fd_intrf.c"
 #include "slip_msg.h"
 #include <assert.h>
 #include <signal.h>
@@ -24,21 +25,6 @@ static void sigint_handler(int signum) {
 }
 
 static struct sigaction sigact = {.sa_handler = sigint_handler};
-
-static int32_t write_file(void *ctx, uint8_t const *buffer, uint16_t size) {
-  int fd = (intptr_t)ctx;
-  return write(fd, buffer, size);
-}
-
-static int32_t read_file(void *ctx, uint8_t *buffer, uint16_t size) {
-  int fd = (intptr_t)ctx;
-  return read(fd, buffer, size);
-}
-
-static struct slip_msg_intrf file_intrf = {
-    .write = write_file,
-    .read = read_file,
-};
 
 struct prog_args {
   char const *sock_path;
@@ -101,7 +87,7 @@ accept:
   }
 
   struct slip_msg msg = {
-      .intrf = &file_intrf,
+      .intrf = &fd_intrf,
       .ctx = (void *)(intptr_t)data_sock,
   };
   struct slip_frame frame = {0};
