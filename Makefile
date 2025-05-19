@@ -4,7 +4,7 @@ INSTALL_PREFIX = /usr/local
 
 INCLUDE_DIR = include
 SRC_DIR = src
-BUILD_DIR = build
+BUILD_DIR ?= build
 TEST_SRC_DIR = test
 TEST_BUILD_DIR = $(BUILD_DIR)/test
 
@@ -17,7 +17,7 @@ TEST_OBJS = $(patsubst $(TEST_SRC_DIR)/%.c,$(TEST_BUILD_DIR)/%.o,$(TEST_SRCS))
 TEST_COMMON_OBJS = $(patsubst $(TEST_SRC_DIR)/%.c,$(TEST_BUILD_DIR)/%.o,$(TEST_COMMON_SRCS))
 
 CFLAGS = -I$(INCLUDE_DIR)
-LDFLAGS = -L$(BUILD_DIR) -l$(LIB_NAME)
+LDFLAGS = -static -L$(BUILD_DIR) -l$(LIB_NAME)
 ARFLAGS = rc
 
 TEST_EXE = $(TEST_BUILD_DIR)/write_on_file $(TEST_BUILD_DIR)/read_on_file $(TEST_BUILD_DIR)/echo_server $(TEST_BUILD_DIR)/echo_client
@@ -26,18 +26,21 @@ TEST_EXE = $(TEST_BUILD_DIR)/write_on_file $(TEST_BUILD_DIR)/read_on_file $(TEST
 
 all: library test
 
-library: $(BUILD_DIR)/lib$(LIB_NAME).a
+library: $(BUILD_DIR)/lib$(LIB_NAME).a $(BUILD_DIR)/lib$(LIB_NAME).so
 
 test: $(TEST_EXE)
 
 $(BUILD_DIR)/lib$(LIB_NAME).a: $(OBJS) $(INCLUDE_DIR)/slip_msg.h
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
+$(BUILD_DIR)/lib$(LIB_NAME).so: $(OBJS) $(INCLUDE_DIR)/slip_msg.h
+	$(CC) -shared -o $@ $(OBJS)
+
 $(TEST_BUILD_DIR)/write_on_file: $(TEST_BUILD_DIR)/write_on_file.o $(TEST_COMMON_OBJS) library
 	$(CC) -o $@ $< $(LDFLAGS)
 
 $(TEST_BUILD_DIR)/read_on_file: $(TEST_BUILD_DIR)/read_on_file.o $(TEST_COMMON_OBJS) library
-	$(CC)  -o $@ $< $(LDFLAGS)
+	$(CC) -o $@ $< $(LDFLAGS)
 
 $(TEST_BUILD_DIR)/echo_server: $(TEST_BUILD_DIR)/echo_server.o $(TEST_COMMON_OBJS) library
 	$(CC) -o $@ $< $(LDFLAGS)
