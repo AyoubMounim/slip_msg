@@ -90,24 +90,29 @@ accept:
       .intrf = &fd_intrf,
       .ctx = (void *)(intptr_t)data_sock,
   };
-  struct slip_frame frame = {0};
+  uint8_t read_buffer[SLIP_PKG_MAX_SIZE];
   while (1) {
     printf("\nwaiting for data...\n");
-    enum slip_err err = slip_msg_read(&msg, &frame);
-    if (err != SLIP_ERR_OK) {
+    uint16_t read_size = SLIP_PKG_MAX_SIZE;
+    enum slip_err err = slip_msg_read(&msg, &read_size, read_buffer);
+    switch (err) {
+    case SLIP_ERR_READ_FAIL:
       printf("recv error\n");
       close(data_sock);
       goto accept;
-    }
-    if (frame.size >= SLIP_PKG_MAX_SIZE) {
-      printf("too big\n");
-      continue;
-    }
-    frame.data[frame.size] = '\0';
-    printf("recv: \"%s\"\n", frame.data);
-    err = slip_msg_write(&msg, frame.data, frame.size);
-    if (err != SLIP_ERR_OK) {
-      printf("send error\n");
+    case SLIP_ERR_PKG_TRUNCATED:
+      printf("truncated packet received\n");
+      break;
+    case SLIP_ERR_OK:
+      printf("recv: \"%.*s\"\n", read_size, read_buffer);
+      err = slip_msg_write(&msg, &read_size, read_buffer);
+      if (err != SLIP_ERR_OK) {
+        printf("send error\n");
+      }
+      break;
+    default:
+      printf("unexpected error: %d\n", err);
+      break;
     }
   }
 

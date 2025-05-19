@@ -47,11 +47,16 @@ int main(int argc, char *argv[]) {
       .ctx = (void *)(intptr_t)fd,
   };
 
-  enum slip_err err = slip_msg_write(&slip_msg, (uint8_t *)args.data_string,
-                                     strlen(args.data_string));
+  uint16_t str_len = strlen(args.data_string);
+  uint16_t data_size = str_len;
+  enum slip_err err =
+      slip_msg_write(&slip_msg, &data_size, (uint8_t *)args.data_string);
 
   if (err != SLIP_ERR_OK) {
     fprintf(stderr, "error: %d\n", err);
+  } else if (data_size != str_len) {
+    fprintf(stderr, "wrong written size, expected: %u, got: %u\n", str_len,
+            data_size);
   }
 
   slip_msg_deinit(&slip_msg);

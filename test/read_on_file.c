@@ -42,17 +42,27 @@ int main(int argc, char *argv[]) {
       .ctx = (void *)(intptr_t)fd,
   };
 
-  struct slip_frame frame = {0};
-  enum slip_err err = slip_msg_read(&slip_msg, &frame);
+  uint16_t read_size = SLIP_PKG_MAX_SIZE;
+  uint8_t buffer[SLIP_PKG_MAX_SIZE] = {0};
+  enum slip_err err = slip_msg_read(&slip_msg, &read_size, buffer);
 
-  if (err != SLIP_ERR_OK) {
-    fprintf(stderr, "error: %d\n", err);
+  switch (err) {
+  case SLIP_ERR_READ_FAIL:
+    fprintf(stderr, "read error\n");
+    break;
+  case SLIP_ERR_PKG_TRUNCATED:
+    fprintf(stderr, "truncated packet\n");
+    break;
+  case SLIP_ERR_PKG_INVALID_ESC:
+    fprintf(stderr, "invalid data received\n");
+    break;
+  case SLIP_ERR_OK:
+    printf("data: %.*s\n", read_size, buffer);
+    break;
+  default:
+    fprintf(stderr, "unexpected error\n");
+    break;
   }
-
-  uint8_t str[frame.size + 1];
-  memcpy(str, frame.data, frame.size);
-  str[frame.size] = '\0';
-  printf("data: %s\n", str);
 
   slip_msg_deinit(&slip_msg);
 

@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   char *line = NULL;
   size_t line_capacity;
   ssize_t line_size;
-  struct slip_frame frame = {0};
+  uint8_t read_buffer[SLIP_PKG_MAX_SIZE] = {0};
   while (1) {
     printf("\n> ");
     if ((line_size = getline(&line, &line_capacity, stdin)) < 0) {
@@ -67,18 +67,19 @@ int main(int argc, char *argv[]) {
     if (line_size == 0) {
       continue;
     }
-    enum slip_err err = slip_msg_write(&msg, (uint8_t *)line, line_size - 1);
+    uint16_t data_size = line_size - 1;
+    enum slip_err err = slip_msg_write(&msg, &data_size, (uint8_t *)line);
     if (err != SLIP_ERR_OK) {
       printf("send error\n");
       continue;
     }
-    err = slip_msg_read(&msg, &frame);
-    if (frame.size >= SLIP_PKG_MAX_SIZE) {
-      printf("too big\n");
+    uint16_t read_size = SLIP_PKG_MAX_SIZE;
+    err = slip_msg_read(&msg, &read_size, read_buffer);
+    if (err != SLIP_ERR_OK) {
+      printf("read error\n");
       continue;
     }
-    frame.data[frame.size] = '\0';
-    printf("\"%s\"\n", frame.data);
+    printf("\"%.*s\"\n", read_size, read_buffer);
   }
 
 exit:
