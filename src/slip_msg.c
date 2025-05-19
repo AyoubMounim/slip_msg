@@ -1,6 +1,5 @@
 
 #include "slip_msg.h"
-#include <stdio.h>
 
 #define END 0300
 #define ESC_END 0334
@@ -30,7 +29,6 @@ enum slip_err slip_msg_read(struct slip_msg const *self, uint16_t *size,
       if (bytes_read == 0) {
         continue;
       }
-      // bytes_read--;
       truncated = 0;
       goto exit;
     case ESC:
